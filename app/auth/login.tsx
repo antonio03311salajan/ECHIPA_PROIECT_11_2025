@@ -36,7 +36,7 @@ export default function Login() {
     console.log("Login submit:", payload);
 
     if (payload.email === MOCK_EMAIL && payload.password === MOCK_PASSWORD) {
-      router.replace("/vitals/history");
+      router.replace("/home");
       return;
     }
 
