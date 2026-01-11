@@ -95,6 +95,10 @@ export default function Login() {
         <TouchableOpacity style={styles.linkButton} onPress={() => router.push("/auth/register-user")}>
             <Text style={styles.linkText}>Mergi la creare cont</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.vitalsButton} onPress={() => router.push("/vitals/heart-rate")}>
+            <Text style={styles.vitalsButtonText}>🩺 Monitorizare Funcții Vitale</Text>
+        </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -138,4 +142,16 @@ const styles = StyleSheet.create({
   rolePillActive: { backgroundColor: "#007aff", borderColor: "#007aff" },
   roleText: { color: "#333" },
   roleTextActive: { color: "#fff", fontWeight: "600" },
+  vitalsButton: {
+    marginTop: 30,
+    paddingVertical: 14,
+    borderRadius: 10,
+    backgroundColor: "#e74c3c",
+    alignItems: "center",
+  },
+  vitalsButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 15,
+  },
 });
