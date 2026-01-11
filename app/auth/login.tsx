@@ -22,17 +22,32 @@ type FormData = {
 };
 
 export default function Login() {
-  const { control, handleSubmit } = useForm<FormData>({
+  const { control, handleSubmit, setValue, getValues } = useForm<FormData>({
     defaultValues: { email: "", password: "", role: "user" },
   });
   const router = useRouter();
   const [focused, setFocused] = useState<string | null>(null);
 
+  const MOCK_EMAIL = "demo@health.test";
+  const MOCK_PASSWORD = "demo1234";
+
   const onSubmit = (data: FormData) => {
     const payload = { ...data };
     console.log("Login submit:", payload);
+
+    if (payload.email === MOCK_EMAIL && payload.password === MOCK_PASSWORD) {
+      router.replace("/vitals/history");
+      return;
+    }
+
     Alert.alert("Autentificare", `Email: ${payload.email}\nRol: ${payload.role}`);
     router.push("/");
+  };
+
+  const loginAsMockUser = () => {
+    setValue("email", MOCK_EMAIL);
+    setValue("password", MOCK_PASSWORD);
+    handleSubmit(onSubmit)();
   };
 
   return (
@@ -92,14 +107,18 @@ export default function Login() {
             <Text style={styles.primaryButtonText}>Autentificare</Text>
         </TouchableOpacity>
 
+    <TouchableOpacity style={styles.mockButton} onPress={loginAsMockUser}>
+      <Text style={styles.mockButtonText}>Autentificare utilizator demo</Text>
+    </TouchableOpacity>
+
         <TouchableOpacity style={styles.linkButton} onPress={() => router.push("/auth/register-user")}>
             <Text style={styles.linkText}>Mergi la creare cont</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.vitalsButton} onPress={() => router.push("/vitals/heart-rate")}>
+        {/* <TouchableOpacity style={styles.vitalsButton} onPress={() => router.push("/vitals/heart-rate")}>
             <Text style={styles.vitalsButtonText}>🩺 Monitorizare Funcții Vitale</Text>
-        </TouchableOpacity>
-          </View>
+        </TouchableOpacity> */}
+            </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -128,6 +147,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   primaryButtonText: { color: "#fff", fontWeight: "600" },
+  mockButton: {
+    backgroundColor: "#0f172a",
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 10,
+    alignItems: "center",
+  },
+  mockButtonText: { color: "#fff", fontWeight: "700" },
   linkButton: { marginTop: 10, alignItems: "center" },
   linkText: { color: "#007aff" },
   roleRow: { flexDirection: "row", marginBottom: 12, justifyContent: "center" },
