@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Această aplicație folosește camera pentru a măsura pulsul cardiac prin tehnologia PPG (fotopletismografie)."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +22,13 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.FLASHLIGHT",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.antoniosalajan03311.ehealthrn"
     },
     "web": {
       "output": "static",
@@ -38,11 +47,23 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Această aplicație folosește camera pentru a măsura pulsul cardiac prin tehnologia PPG."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4ded3188-a780-4603-a0d6-7b3c43a05771"
+      }
     }
   }
 }
