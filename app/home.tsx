@@ -2,11 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -49,6 +49,16 @@ const planningCards: NavCard[] = [
     icon: "calendar",
     route: "/consultations",
     color: "#f59e0b",
+  },
+];
+
+const communicationCards: NavCard[] = [
+  {
+    title: "Mesaje Medic",
+    subtitle: "Discută cu medicul tău",
+    icon: "chatbubbles",
+    route: "/messages/chat",
+    color: "#8b5cf6",
   },
 ];
 
@@ -95,6 +105,9 @@ export default function HomeHub() {
 
         <Text style={styles.sectionLabel}>Programari</Text>
         <View style={styles.stack}>{planningCards.map(renderCard)}</View>
+
+        <Text style={styles.sectionLabel}>Comunicare</Text>
+        <View style={styles.stack}>{communicationCards.map(renderCard)}</View>
 
       </ScrollView>
     </SafeAreaView>
@@ -196,4 +209,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-});
+}
+);
