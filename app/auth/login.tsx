@@ -1,28 +1,42 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { z } from "zod";
 
 
-type FormData = {
-  email: string;
-  password: string;
-  role: "user" | "doctor";
-};
+const LoginSchema = z.object({
+  email: z
+    .string()
+    .min(1, "Email-ul este obligatoriu")
+    .email("Email invalid"),
+  password: z
+    .string()
+    .min(6, "Parola trebuie sa aiba minim 6 caractere")
+    .max(100, "Parola este prea lunga"),
+  role: z.enum(["user", "doctor"], {
+    required_error: "Selecteaza un rol",
+    invalid_type_error: "Rol invalid",
+  }),
+});
+
+type FormData = z.infer<typeof LoginSchema>;
 
 export default function Login() {
-  const { control, handleSubmit, setValue, getValues } = useForm<FormData>({
+  const { control, handleSubmit, setValue, getValues, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(LoginSchema),
     defaultValues: { email: "", password: "", role: "user" },
   });
   const router = useRouter();
@@ -30,6 +44,8 @@ export default function Login() {
 
   const MOCK_EMAIL = "demo@health.test";
   const MOCK_PASSWORD = "demo1234";
+  const MOCK_DOCTOR_EMAIL = "doctor@health.test";
+  const MOCK_DOCTOR_PASSWORD = "doctor1234";
 
   const onSubmit = (data: FormData) => {
     const payload = { ...data };
@@ -40,6 +56,11 @@ export default function Login() {
       return;
     }
 
+    if (payload.email === MOCK_DOCTOR_EMAIL && payload.password === MOCK_DOCTOR_PASSWORD) {
+      router.replace("/doctor/dashboard");
+      return;
+    }
+
     Alert.alert("Autentificare", `Email: ${payload.email}\nRol: ${payload.role}`);
     router.push("/");
   };
@@ -47,6 +68,12 @@ export default function Login() {
   const loginAsMockUser = () => {
     setValue("email", MOCK_EMAIL);
     setValue("password", MOCK_PASSWORD);
+    handleSubmit(onSubmit)();
+  };
+
+  const loginAsMockDoctor = () => {
+    setValue("email", MOCK_DOCTOR_EMAIL);
+    setValue("password", MOCK_DOCTOR_PASSWORD);
     handleSubmit(onSubmit)();
   };
 
@@ -67,7 +94,7 @@ export default function Login() {
             rules={{ required: true, pattern: /.+@.+\..+/ }}
             render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-                style={[styles.input, focused === "email" && styles.inputFocused]}
+                style={[styles.input, focused === "email" && styles.inputFocused, errors.email && styles.inputError]}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 onBlur={() => {
@@ -81,6 +108,7 @@ export default function Login() {
             />
             )}
         />
+        {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
 
         <Text style={styles.label}>Parolă</Text>
         <Controller
@@ -89,7 +117,7 @@ export default function Login() {
             rules={{ required: true, minLength: 6 }}
             render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-                style={[styles.input, focused === "password" && styles.inputFocused]}
+                style={[styles.input, focused === "password" && styles.inputFocused, errors.password && styles.inputError]}
                 secureTextEntry
                 onBlur={() => {
                 onBlur();
@@ -102,6 +130,7 @@ export default function Login() {
             />
             )}
         />
+        {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
 
         <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit(onSubmit)}>
             <Text style={styles.primaryButtonText}>Autentificare</Text>
@@ -109,6 +138,10 @@ export default function Login() {
 
     <TouchableOpacity style={styles.mockButton} onPress={loginAsMockUser}>
       <Text style={styles.mockButtonText}>Autentificare utilizator demo</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity style={styles.doctorButton} onPress={loginAsMockDoctor}>
+      <Text style={styles.doctorButtonText}>🩺 Conectare ca medic demo</Text>
     </TouchableOpacity>
 
         <TouchableOpacity style={styles.linkButton} onPress={() => router.push("/auth/register-user")}>
@@ -139,6 +172,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderColor: "#007aff",
   },
+  inputError: {
+    borderBottomColor: "#ef4444",
+  },
+  errorText: {
+    color: "#ef4444",
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
+  },
   primaryButton: {
     backgroundColor: "#007aff",
     paddingVertical: 12,
@@ -155,6 +197,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   mockButtonText: { color: "#fff", fontWeight: "700" },
+  doctorButton: {
+    backgroundColor: "#10b981",
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 10,
+    alignItems: "center",
+  },
+  doctorButtonText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   linkButton: { marginTop: 10, alignItems: "center" },
   linkText: { color: "#007aff" },
   roleRow: { flexDirection: "row", marginBottom: 12, justifyContent: "center" },
