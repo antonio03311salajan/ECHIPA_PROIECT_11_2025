@@ -1,17 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
+import { zodResolver } from "@hookform/resolvers/zod";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { z } from "zod";
 
 const STORAGE_KEY = "consultations";
 
@@ -25,13 +28,43 @@ type Consultation = {
   notes?: string;
 };
 
-type FormState = {
-  title: string;
-  doctor: string;
-  location: string;
-  time: string;
-  notes: string;
-};
+const ConsultationSchema = z.object({
+  title: z
+    .string()
+    .min(1, "Titlul este obligatoriu")
+    .min(3, "Titlul trebuie sa aiba minim 3 caractere")
+    .max(100, "Titlul este prea lung"),
+  doctor: z
+    .string()
+    .min(3, "Numele doctorului trebuie sa aiba minim 3 caractere")
+    .max(100, "Numele doctorului este prea lung")
+    .regex(/^[a-zA-ZăâîșțĂÂÎȘȚ.\s-]+$/, "Numele contine caractere invalide")
+    .optional()
+    .or(z.literal("")),
+  location: z
+    .string()
+    .min(3, "Locatia trebuie sa aiba minim 3 caractere")
+    .max(200, "Locatia este prea lunga")
+    .optional()
+    .or(z.literal("")),
+  time: z
+    .string()
+    .min(1, "Ora este obligatorie")
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Ora invalida (format: HH:MM, ex: 09:30)")
+    .refine((val) => {
+      const [hours, minutes] = val.split(":").map(Number);
+      return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+    }, {
+      message: "Ora trebuie sa fie intre 00:00 si 23:59",
+    }),
+  notes: z
+    .string()
+    .max(1000, "Notele sunt prea lungi")
+    .optional()
+    .or(z.literal("")),
+});
+
+type FormState = z.infer<typeof ConsultationSchema>;
 
 function formatDateKey(date: Date) {
   return date.toISOString().split("T")[0];
@@ -51,12 +84,9 @@ export default function ConsultationsScreen() {
   });
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [items, setItems] = useState<Consultation[]>([]);
-  const [form, setForm] = useState<FormState>({
-    title: "",
-    doctor: "",
-    location: "",
-    time: "",
-    notes: "",
+  const { register, handleSubmit, reset, setValue, watch } = useForm<FormState>({
+    resolver: zodResolver(ConsultationSchema),
+    defaultValues: { title: "", doctor: "", location: "", time: "", notes: "" },
   });
   const [saving, setSaving] = useState(false);
 
@@ -89,7 +119,7 @@ export default function ConsultationsScreen() {
     const year = monthCursor.getFullYear();
     const month = monthCursor.getMonth();
     const firstDay = new Date(year, month, 1);
-    const leading = (firstDay.getDay() + 6) % 7; // Monday as first day
+    const leading = (firstDay.getDay() + 6) % 7;
     const totalDays = new Date(year, month + 1, 0).getDate();
     const cells: { day: number | null; dateKey?: string }[] = [];
 
@@ -121,47 +151,40 @@ export default function ConsultationsScreen() {
   };
 
   const updateForm = (key: keyof FormState, value: string) => {
-    setForm(prev => ({ ...prev, [key]: value }));
+    setValue(key, value);
   };
 
-  const addConsultation = async () => {
-    if (!form.title.trim()) {
-      Alert.alert("Completeaza titlul consultatiei");
-      return;
-    }
-    if (!form.time.trim()) {
-      Alert.alert("Adauga ora consultatiei (HH:MM)");
-      return;
-    }
+  const addConsultation = () => {
+    handleSubmit(async (values: FormState) => {
+      const hasSameDay = items.some(item => item.date === selectedKey);
+      if (hasSameDay) {
+        Alert.alert("Zi deja ocupata", "Exista deja o consultatie in aceasta zi. Alege o alta data.");
+        return;
+      }
 
-    const hasSameDay = items.some(item => item.date === selectedKey);
-    if (hasSameDay) {
-      Alert.alert("Zi deja ocupata", "Exista deja o consultatie in aceasta zi. Alege o alta data.");
-      return;
-    }
+      const newItem: Consultation = {
+        id: buildId(),
+        title: values.title.trim(),
+        doctor: (values.doctor || "").trim(),
+        location: (values.location || "").trim(),
+        time: values.time.trim(),
+        notes: (values.notes || "").trim(),
+        date: selectedKey,
+      };
 
-    const newItem: Consultation = {
-      id: buildId(),
-      title: form.title.trim(),
-      doctor: form.doctor.trim(),
-      location: form.location.trim(),
-      time: form.time.trim(),
-      notes: form.notes.trim(),
-      date: selectedKey,
-    };
-
-    try {
-      setSaving(true);
-      const nextItems = [newItem, ...items].sort((a, b) => (a.date > b.date ? -1 : 1));
-      setItems(nextItems);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextItems));
-      setForm({ title: "", doctor: "", location: "", time: "", notes: "" });
-    } catch (e) {
-      Alert.alert("Eroare", "Nu am putut salva consultatia.");
-      console.log("Save consultation failed", e);
-    } finally {
-      setSaving(false);
-    }
+      try {
+        setSaving(true);
+        const nextItems = [newItem, ...items].sort((a, b) => (a.date > b.date ? -1 : 1));
+        setItems(nextItems);
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextItems));
+        reset();
+      } catch (e) {
+        Alert.alert("Eroare", "Nu am putut salva consultatia.");
+        console.log("Save consultation failed", e);
+      } finally {
+        setSaving(false);
+      }
+    })();
   };
 
   return (
@@ -257,7 +280,7 @@ export default function ConsultationsScreen() {
             <TextInput
               style={styles.input}
               placeholder="Ex: Control cardiologie"
-              value={form.title}
+              value={watch("title")}
               onChangeText={text => updateForm("title", text)}
             />
           </View>
@@ -267,7 +290,7 @@ export default function ConsultationsScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Dr. Ionescu"
-                value={form.doctor}
+                value={watch("doctor")}
                 onChangeText={text => updateForm("doctor", text)}
               />
             </View>
@@ -276,7 +299,7 @@ export default function ConsultationsScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="09:30"
-                value={form.time}
+                value={watch("time")}
                 onChangeText={text => updateForm("time", text)}
                 keyboardType="numbers-and-punctuation"
                 maxLength={5}
@@ -288,7 +311,7 @@ export default function ConsultationsScreen() {
             <TextInput
               style={styles.input}
               placeholder="Clinica / Cabinet"
-              value={form.location}
+              value={watch("location")}
               onChangeText={text => updateForm("location", text)}
             />
           </View>
@@ -297,7 +320,7 @@ export default function ConsultationsScreen() {
             <TextInput
               style={[styles.input, { height: 80, textAlignVertical: "top" }]}
               placeholder="Optional"
-              value={form.notes}
+              value={watch("notes")}
               multiline
               onChangeText={text => updateForm("notes", text)}
             />

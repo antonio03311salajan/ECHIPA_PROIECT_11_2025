@@ -4,12 +4,12 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import React, { useCallback, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -84,7 +84,7 @@ export default function HeartRateHistoryScreen() {
             style={styles.headerAction}
           >
             <Ionicons name="pulse" size={22} color="#0f172a" />
-          </TouchableOpacity>
+          </TouchableOpacity>clea
       </View>
 
       {loading ? (

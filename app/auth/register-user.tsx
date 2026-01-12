@@ -1,3 +1,4 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -14,29 +15,109 @@ import {
     View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { z } from "zod";
 
 
-type UserForm = {
-  firstName: string;
-  lastName: string;
-  personalCode: string;
-  dob: string;
-  gender: string;
-  email: string;
-  phone: string;
-  address: string;
-  password: string;
-  bloodType?: string;
-  allergies?: string;
-  chronic?: string;
-  weight?: string;
-  height?: string;
-  gdpr: boolean;
-};
+const UserSchema = z.object({
+    firstName: z
+        .string()
+        .min(1, "Prenumele este obligatoriu")
+        .min(2, "Prenumele trebuie sa aiba minim 2 caractere")
+        .max(50, "Prenumele este prea lung")
+        .regex(/^[a-zA-Z\u0103\u00e2\u00ee\u0219\u021b\u0102\u00c2\u00ce\u0218\u021a\s-]+$/, "Prenumele contine caractere invalide"),
+    lastName: z
+        .string()
+        .min(1, "Numele este obligatoriu")
+        .min(2, "Numele trebuie sa aiba minim 2 caractere")
+        .max(50, "Numele este prea lung")
+        .regex(/^[a-zA-Z\u0103\u00e2\u00ee\u0219\u021b\u0102\u00c2\u00ce\u0218\u021a\s-]+$/, "Numele contine caractere invalide"),
+    personalCode: z
+        .string()
+        .min(1, "CNP-ul este obligatoriu")
+        .length(13, "CNP-ul trebuie sa aiba exact 13 cifre")
+        .regex(/^[1-9]\d{12}$/, "CNP invalid"),
+    dob: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Data invalida (format: YYYY-MM-DD)")
+        .refine((val) => {
+            if (!val) return true;
+            const date = new Date(val);
+            const now = new Date();
+            const age = now.getFullYear() - date.getFullYear();
+            return age >= 0 && age <= 120;
+        }, {
+            message: "Data nasterii invalida",
+        })
+        .optional()
+        .or(z.literal("")),
+    gender: z
+        .string()
+        .regex(/^(M|F|m|f|Alt|alt)?$/, "Gen invalid (M/F/Alt)")
+        .optional()
+        .or(z.literal("")),
+    email: z
+        .string()
+        .min(1, "Email-ul este obligatoriu")
+        .email("Email invalid")
+        .max(100, "Email-ul este prea lung"),
+    phone: z
+        .string()
+        .regex(/^((\+4|0)?[7]\d{8})?$/, "Numar de telefon invalid (ex: 0712345678)")
+        .optional()
+        .or(z.literal("")),
+    address: z
+        .string()
+        .min(10, "Adresa este prea scurta")
+        .max(200, "Adresa este prea lunga")
+        .optional()
+        .or(z.literal("")),
+    password: z
+        .string()
+        .min(6, "Parola trebuie sa aiba minim 6 caractere")
+        .max(100, "Parola este prea lunga")
+        .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Parola trebuie sa contina litere mari, mici si cifre"),
+    bloodType: z
+        .string()
+        .regex(/^((A|B|AB|O)[+-]?)?$/, "Grupa sanguina invalida (ex: A+, B-, O+)")
+        .optional()
+        .or(z.literal("")),
+    allergies: z
+        .string()
+        .max(500, "Textul este prea lung")
+        .optional()
+        .or(z.literal("")),
+    chronic: z
+        .string()
+        .max(500, "Textul este prea lung")
+        .optional()
+        .or(z.literal("")),
+    weight: z
+        .string()
+        .regex(/^(\d{2,3}(\.\d{1,2})?)?$/, "Greutate invalida (ex: 70, 75.5)")
+        .refine((val) => !val || (parseFloat(val) >= 20 && parseFloat(val) <= 300), {
+            message: "Greutatea trebuie sa fie intre 20-300 kg",
+        })
+        .optional()
+        .or(z.literal("")),
+    height: z
+        .string()
+        .regex(/^(\d{2,3})?$/, "Inaltime invalida (ex: 175)")
+        .refine((val) => !val || (parseInt(val) >= 50 && parseInt(val) <= 250), {
+            message: "Inaltimea trebuie sa fie intre 50-250 cm",
+        })
+        .optional()
+        .or(z.literal("")),
+    gdpr: z.boolean().refine((val) => val === true, {
+        message: "Trebuie sa accepti termenii si conditiile",
+    }),
+});
+
+type UserForm = z.infer<typeof UserSchema>;
 
 export default function RegisterUser() {
-  const { control, handleSubmit } = useForm<UserForm>({
-    defaultValues: {
+    const { control, handleSubmit, formState: { errors } } = useForm<UserForm>({
+        resolver: zodResolver(UserSchema),
+        defaultValues: {
       firstName: "",
       lastName: "",
       personalCode: "",
@@ -84,7 +165,7 @@ export default function RegisterUser() {
                 rules={{ required: true }}
                 render={({ field: { onChange, value } }) => (
                 <TextInput
-                    style={[styles.input, focused === "lastName" && styles.inputFocused]}
+                    style={[styles.input, focused === "lastName" && styles.inputFocused, errors.lastName && styles.inputError]}
                     onFocus={() => setFocused("lastName")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -92,6 +173,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.lastName && <Text style={styles.errorText}>{errors.lastName.message}</Text>}
 
             <Text style={styles.label}>Prenume</Text>
             <Controller
@@ -100,7 +182,7 @@ export default function RegisterUser() {
                 rules={{ required: true }}
                 render={({ field: { onChange, value } }) => (
                 <TextInput
-                    style={[styles.input, focused === "firstName" && styles.inputFocused]}
+                    style={[styles.input, focused === "firstName" && styles.inputFocused, errors.firstName && styles.inputError]}
                     onFocus={() => setFocused("firstName")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -108,6 +190,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.firstName && <Text style={styles.errorText}>{errors.firstName.message}</Text>}
 
             <Text style={styles.label}>Cod Numeric Personal</Text>
             <Controller
@@ -116,7 +199,7 @@ export default function RegisterUser() {
                 rules={{ required: true }}
                 render={({ field: { onChange, value } }) => (
                 <TextInput
-                    style={[styles.input, focused === "personalCode" && styles.inputFocused]}
+                    style={[styles.input, focused === "personalCode" && styles.inputFocused, errors.personalCode && styles.inputError]}
                     onFocus={() => setFocused("personalCode")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -124,6 +207,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.personalCode && <Text style={styles.errorText}>{errors.personalCode.message}</Text>}
 
             <Text style={styles.label}>Data nașterii</Text>
             <Controller
@@ -132,7 +216,7 @@ export default function RegisterUser() {
                 render={({ field: { onChange, value } }) => (
                 <TextInput
                     placeholder="YYYY-MM-DD"
-                    style={[styles.input, focused === "dob" && styles.inputFocused]}
+                    style={[styles.input, focused === "dob" && styles.inputFocused, errors.dob && styles.inputError]}
                     onFocus={() => setFocused("dob")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -140,6 +224,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.dob && <Text style={styles.errorText}>{errors.dob.message}</Text>}
 
             <Text style={styles.label}>Gen</Text>
             <Controller
@@ -148,7 +233,7 @@ export default function RegisterUser() {
                 render={({ field: { onChange, value } }) => (
                 <TextInput
                     placeholder="M/F/Alt"
-                    style={[styles.input, focused === "gender" && styles.inputFocused]}
+                    style={[styles.input, focused === "gender" && styles.inputFocused, errors.gender && styles.inputError]}
                     onFocus={() => setFocused("gender")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -156,6 +241,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.gender && <Text style={styles.errorText}>{errors.gender.message}</Text>}
 
             <Text style={styles.label}>Email</Text>
             <Controller
@@ -166,7 +252,7 @@ export default function RegisterUser() {
                 <TextInput
                     autoCapitalize="none"
                     keyboardType="email-address"
-                    style={[styles.input, focused === "email" && styles.inputFocused]}
+                    style={[styles.input, focused === "email" && styles.inputFocused, errors.email && styles.inputError]}
                     onFocus={() => setFocused("email")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -174,6 +260,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
 
             <Text style={styles.label}>Număr de telefon</Text>
             <Controller
@@ -182,7 +269,7 @@ export default function RegisterUser() {
                 render={({ field: { onChange, value } }) => (
                 <TextInput
                     keyboardType="phone-pad"
-                    style={[styles.input, focused === "phone" && styles.inputFocused]}
+                    style={[styles.input, focused === "phone" && styles.inputFocused, errors.phone && styles.inputError]}
                     onFocus={() => setFocused("phone")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -190,6 +277,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.phone && <Text style={styles.errorText}>{errors.phone.message}</Text>}
 
             <Text style={styles.label}>Adresă domiciliu</Text>
             <Controller
@@ -197,7 +285,7 @@ export default function RegisterUser() {
                 name="address"
                 render={({ field: { onChange, value } }) => (
                 <TextInput
-                    style={[styles.input, focused === "address" && styles.inputFocused]}
+                    style={[styles.input, focused === "address" && styles.inputFocused, errors.address && styles.inputError]}
                     onFocus={() => setFocused("address")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -205,6 +293,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.address && <Text style={styles.errorText}>{errors.address.message}</Text>}
 
             <Text style={styles.label}>Parolă</Text>
             <Controller
@@ -214,7 +303,7 @@ export default function RegisterUser() {
                 render={({ field: { onChange, value } }) => (
                 <TextInput
                     secureTextEntry
-                    style={[styles.input, focused === "password" && styles.inputFocused]}
+                    style={[styles.input, focused === "password" && styles.inputFocused, errors.password && styles.inputError]}
                     onFocus={() => setFocused("password")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -222,6 +311,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
 
             <Text style={styles.label}>Grupă sanguină</Text>
             <Controller
@@ -229,7 +319,7 @@ export default function RegisterUser() {
                 name="bloodType"
                 render={({ field: { onChange, value } }) => (
                 <TextInput
-                    style={[styles.input, focused === "bloodType" && styles.inputFocused]}
+                    style={[styles.input, focused === "bloodType" && styles.inputFocused, errors.bloodType && styles.inputError]}
                     onFocus={() => setFocused("bloodType")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -238,6 +328,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.bloodType && <Text style={styles.errorText}>{errors.bloodType.message}</Text>}
 
             <Text style={styles.label}>Alergii</Text>
             <Controller
@@ -245,7 +336,7 @@ export default function RegisterUser() {
                 name="allergies"
                 render={({ field: { onChange, value } }) => (
                 <TextInput
-                    style={[styles.input, focused === "allergies" && styles.inputFocused]}
+                    style={[styles.input, focused === "allergies" && styles.inputFocused, errors.allergies && styles.inputError]}
                     onFocus={() => setFocused("allergies")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -254,6 +345,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.allergies && <Text style={styles.errorText}>{errors.allergies.message}</Text>}
 
             <Text style={styles.label}>Afecțiuni cronice</Text>
             <Controller
@@ -261,7 +353,7 @@ export default function RegisterUser() {
                 name="chronic"
                 render={({ field: { onChange, value } }) => (
                 <TextInput
-                    style={[styles.input, focused === "chronic" && styles.inputFocused]}
+                    style={[styles.input, focused === "chronic" && styles.inputFocused, errors.chronic && styles.inputError]}
                     onFocus={() => setFocused("chronic")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -270,6 +362,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.chronic && <Text style={styles.errorText}>{errors.chronic.message}</Text>}
 
             <Text style={styles.label}>Greutate (kg)</Text>
             <Controller
@@ -278,7 +371,7 @@ export default function RegisterUser() {
                 render={({ field: { onChange, value } }) => (
                 <TextInput
                     keyboardType="numeric"
-                    style={[styles.input, focused === "weight" && styles.inputFocused]}
+                    style={[styles.input, focused === "weight" && styles.inputFocused, errors.weight && styles.inputError]}
                     onFocus={() => setFocused("weight")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -286,6 +379,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.weight && <Text style={styles.errorText}>{errors.weight.message}</Text>}
 
             <Text style={styles.label}>Înălțime (cm)</Text>
             <Controller
@@ -294,7 +388,7 @@ export default function RegisterUser() {
                 render={({ field: { onChange, value } }) => (
                 <TextInput
                     keyboardType="numeric"
-                    style={[styles.input, focused === "height" && styles.inputFocused]}
+                    style={[styles.input, focused === "height" && styles.inputFocused, errors.height && styles.inputError]}
                     onFocus={() => setFocused("height")}
                     onBlur={() => setFocused(null)}
                     onChangeText={onChange}
@@ -302,6 +396,7 @@ export default function RegisterUser() {
                 />
                 )}
             />
+            {errors.height && <Text style={styles.errorText}>{errors.height.message}</Text>}
 
             <View style={styles.switchRow}>
                 <Text style={{ flex: 1 }}>Consimțământ GDPR</Text>
@@ -313,6 +408,7 @@ export default function RegisterUser() {
                 )}
                 />
             </View>
+            {errors.gdpr && <Text style={styles.errorText}>{errors.gdpr.message}</Text>}
 
             <TouchableOpacity style={styles.primaryButton} onPress={handleSubmit(onSubmit)}>
                 <Text style={styles.primaryButtonText}>Înregistrare</Text>
@@ -336,6 +432,15 @@ const styles = StyleSheet.create({
   inputFocused: {
     borderBottomWidth: 2,
     borderColor: "#007aff",
+  },
+  inputError: {
+    borderBottomColor: "#ef4444",
+  },
+  errorText: {
+    color: "#ef4444",
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 8,
   },
   primaryButton: {
     backgroundColor: "#007aff",
