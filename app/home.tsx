@@ -59,6 +59,25 @@ const communicationCards: NavCard[] = [
     icon: "chatbubbles",
     route: "/messages/chat",
     color: "#8b5cf6",
+  ];
+  
+const recommendtionCards: NavCard[] = [
+  {
+    title: "Recomandari medicale",
+    subtitle: "Trimite si vizualizeaza recomandarile",
+    icon: "document-text",
+    route: "/doctor/recommendation",
+    color: "#e7f309",
+  },
+];
+
+const report_exportCards: NavCard[] = [
+  {
+    title: "Exporta rapoarte medicale", 
+    subtitle: "Genereaza rapoarte PDF/Excel pentru pacienti",
+    icon: "file-tray-full",
+    route: "/doctor/reportexport",
+    color: "#f600c9"
   },
 ];
 
@@ -108,6 +127,12 @@ export default function HomeHub() {
 
         <Text style={styles.sectionLabel}>Comunicare</Text>
         <View style={styles.stack}>{communicationCards.map(renderCard)}</View>
+        
+        <Text style={styles.sectionLabel}>Recomandari</Text>
+        <View style={styles.stack}>{recommendtionCards.map(renderCard)}</View>
+
+        <Text style={styles.sectionLabel}>Rapoarte</Text>
+        <View style={styles.stack}>{report_exportCards.map(renderCard)}</View>
 
       </ScrollView>
     </SafeAreaView>
